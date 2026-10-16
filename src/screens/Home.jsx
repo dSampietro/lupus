@@ -20,7 +20,7 @@ export default function Home({ user, onSession }) {
     setBusy(true);
     setError("");
     try {
-      const joined = await joinRoom(code, name, user.uid);
+      const joined = await joinRoom(code.toUpperCase(), name, user.uid);
       try {
         localStorage.setItem("lupus-name", name.trim());
       } catch {
