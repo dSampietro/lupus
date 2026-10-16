@@ -1,0 +1,62 @@
+rules_version = '2';
+
+// Data model
+//   rooms/{code}                  public room state (master uid, status, phase, locked)
+//   rooms/{code}/players/{uid}    public: name + alive/dead (everyone in the room can read)
+//   rooms/{code}/private/{uid}    secret: role + conditions (only that player and the master)
+//   rooms/{code}/secret/config    master only: selected roles and custom roles
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function roomPath(code) {
+      return /databases/$(database)/documents/rooms/$(code);
+    }
+
+    function isMaster(code) {
+      return signedIn() && get(roomPath(code)).data.masterUid == request.auth.uid;
+    }
+
+    match /rooms/{code} {
+      // Rooms can be opened by code but never listed.
+      allow get: if signedIn();
+      allow list: if false;
+
+      allow create: if signedIn()
+        && request.resource.data.masterUid == request.auth.uid
+        && code.size() == 5;
+
+      allow update, delete: if signedIn()
+        && resource.data.masterUid == request.auth.uid;
+
+      match /players/{pid} {
+        allow read: if signedIn();
+
+        // A player can only create their own entry, and only while the room is open.
+        allow create: if signedIn()
+          && request.auth.uid == pid
+          && get(roomPath(code)).data.locked == false
+          && request.resource.data.keys().hasOnly(['name', 'alive', 'joinedAt'])
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() <= 24
+          && request.resource.data.alive == true;
+
+        allow update: if isMaster(code);
+        allow delete: if isMaster(code) || (signedIn() && request.auth.uid == pid);
+      }
+
+      match /private/{pid} {
+        allow read: if signedIn() && (request.auth.uid == pid || isMaster(code));
+        allow write: if isMaster(code);
+      }
+
+      match /secret/{docId} {
+        allow read, write: if isMaster(code);
+      }
+    }
+  }
+}
