@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button, Card, ErrorText, Screen, inputClass } from "../components/ui";
+import InstallHint from "../components/InstallHint";
 import { createRoom, friendlyError, joinRoom } from "../lib/game";
 
 export default function Home({ user, onSession }) {
@@ -50,6 +51,8 @@ export default function Home({ user, onSession }) {
 
   return (
     <Screen>
+      <InstallHint />
+
       <header className="space-y-1 pb-4 pt-8 text-center">
         <div className="text-6xl">🐺</div>
         <h1 className="text-4xl font-black tracking-tight">Lupus</h1>
